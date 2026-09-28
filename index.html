@@ -180,7 +180,7 @@ tr:last-child td { border-bottom: none; }
   <div class="header">
     <div class="header-left">
       <h1>Phil's Fitness Tracker</h1>
-      <p>14 benchmarks · 219 lb goals</p>
+      <p>14 benchmarks · <span id="bw-display"></span> lb strength goals</p>
     </div>
     <div class="header-right">
       <button class="icon-btn" onclick="showSection('data')" title="Data & settings">⚙️</button>
@@ -249,6 +249,18 @@ tr:last-child td { border-bottom: none; }
 
       <!-- DATA -->
       <div class="section" id="sec-data">
+        <div class="cat">Strength goals</div>
+        <div class="data-card">
+          <h3>Current bodyweight</h3>
+          <p>Your 7 strength goals are calculated as multiples of your bodyweight. Update this whenever your weight changes and all targets will recalculate instantly.</p>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">
+            <input class="inp" type="number" id="bw-input" placeholder="199" min="100" max="400" step="0.1" inputmode="decimal" style="max-width:120px">
+            <span style="font-size:14px;color:var(--text2)">lbs</span>
+            <button class="btn-log" style="padding:11px 20px;font-size:14px" onclick="saveBW()">Update</button>
+          </div>
+          <div id="bw-targets" style="margin-top:14px;background:var(--surface2);border-radius:var(--r-sm);padding:12px;font-size:12px;line-height:2"></div>
+        </div>
+
         <div class="cat">Data management</div>
         <div class="data-card">
           <h3>Export data</h3>
@@ -263,7 +275,7 @@ tr:last-child td { border-bottom: none; }
         </div>
         <div class="data-card">
           <h3>About</h3>
-          <p>Phil's Fitness Tracker v1.0<br>14 benchmarks: 7 KarlApexFit fitness tests + 7 strength goals at 219 lbs bodyweight.<br><br>Data is stored locally on this device. Export regularly to back up.</p>
+          <p>Phil's Fitness Tracker v1.0<br>14 benchmarks: 7 KarlApexFit fitness tests + 7 strength goals.<br><br>Data is stored locally on this device. Export regularly to back up.</p>
         </div>
         <div class="data-card">
           <h3>Reset all data</h3>
@@ -294,7 +306,7 @@ tr:last-child td { border-bottom: none; }
 <div class="toast" id="toast"></div>
 
 <script>
-const BW = 219;
+let BW = parseFloat(localStorage.getItem('phil_bw') || '199');
 
 const FITNESS = [
   {id:'pushup', name:'Push-ups', unit:'reps', lower:false,
@@ -612,10 +624,59 @@ function showSection(name) {
   const nb = document.getElementById('nav-' + name);
   if (nb) nb.classList.add('active');
   if (name === 'overview') renderOverview();
+  if (name === 'data') renderBWTargets();
   if (name === 'history') {
     document.getElementById('hist-sel').innerHTML = ALL.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
     renderHistory();
   }
+}
+
+function updateStrengthGoals() {
+  STRENGTH[0].goal = Math.round(BW * 1.25);
+  STRENGTH[0].goalLabel = `1.25× BW = ${Math.round(BW * 1.25)} lbs`;
+  STRENGTH[0].sub = `Target ${Math.round(BW * 1.25)} lbs`;
+  STRENGTH[1].goal = Math.round(BW * 1.5);
+  STRENGTH[1].goalLabel = `1.5× BW = ${Math.round(BW * 1.5)} lbs`;
+  STRENGTH[1].sub = `Target ${Math.round(BW * 1.5)} lbs`;
+  STRENGTH[2].goal = Math.round(BW * 2);
+  STRENGTH[2].goalLabel = `2× BW = ${Math.round(BW * 2)} lbs`;
+  STRENGTH[2].sub = `Target ${Math.round(BW * 2)} lbs`;
+  STRENGTH[4].goal = Math.round(BW * 0.75);
+  STRENGTH[4].goalLabel = `0.75× BW = ${Math.round(BW * 0.75)} lbs`;
+  STRENGTH[4].sub = `Target ${Math.round(BW * 0.75)} lbs`;
+  STRENGTH[6].goal = Math.round(BW * 0.5);
+  STRENGTH[6].goalLabel = `0.5× BW = ${Math.round(BW * 0.5)} lbs/hand`;
+  STRENGTH[6].sub = `Target ${Math.round(BW * 0.5)} lbs/hand`;
+}
+
+function renderBWTargets() {
+  const el = document.getElementById('bw-targets');
+  if (!el) return;
+  el.innerHTML = [
+    `Bench press: <strong>${Math.round(BW * 1.25)} lbs</strong> (1.25×)`,
+    `Back squat: <strong>${Math.round(BW * 1.5)} lbs</strong> (1.5×)`,
+    `Deadlift: <strong>${Math.round(BW * 2)} lbs</strong> (2×)`,
+    `Overhead press: <strong>${Math.round(BW * 0.75)} lbs</strong> (0.75×)`,
+    `Farmer carry: <strong>${Math.round(BW * 0.5)} lbs/hand</strong> (0.5×)`,
+    `Pull-ups: <strong>15 reps</strong>`,
+    `Dips: <strong>20 reps</strong>`,
+  ].map(s => `<div style="color:var(--text2)">${s}</div>`).join('');
+  const inp = document.getElementById('bw-input');
+  if (inp) inp.value = BW;
+  const disp = document.getElementById('bw-display');
+  if (disp) disp.textContent = BW;
+}
+
+function saveBW() {
+  const val = parseFloat(document.getElementById('bw-input').value);
+  if (isNaN(val) || val < 100 || val > 400) { toast('Enter a valid weight (100–400 lbs)'); return; }
+  BW = val;
+  localStorage.setItem('phil_bw', BW);
+  updateStrengthGoals();
+  renderBWTargets();
+  renderGrids();
+  renderOverview();
+  toast(`Goals updated for ${BW} lbs ✓`);
 }
 
 // Service worker
@@ -623,6 +684,8 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').catch(() => {});
 }
 
+updateStrengthGoals();
+renderBWTargets();
 renderGrids();
 renderOverview();
 </script>

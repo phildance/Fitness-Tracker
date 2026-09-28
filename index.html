@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1a6b4a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FitTracker">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Phil's Fitness Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg: #f5f5f2;
+  --surface: #ffffff;
+  --surface2: #eeede9;
+  --border: rgba(0,0,0,0.09);
+  --border2: rgba(0,0,0,0.16);
+  --text: #1a1a18;
+  --text2: #5c5c58;
+  --text3: #9e9e98;
+  --accent: #1a6b4a;
+  --accent-fg: #ffffff;
+  --accent-light: #e2f2ea;
+  --blue: #185FA5;
+  --blue-light: #e6f1fb;
+  --amber: #8a5200;
+  --amber-light: #fef3db;
+  --red: #992020;
+  --red-light: #fdeaea;
+  --green: #2d6e1a;
+  --green-light: #eaf3de;
+  --teal: #0f6e56;
+  --teal-light: #e1f5ee;
+  --r: 12px;
+  --r-sm: 8px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bot: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131312;
+    --surface: #1e1e1b;
+    --surface2: #272724;
+    --border: rgba(255,255,255,0.09);
+    --border2: rgba(255,255,255,0.16);
+    --text: #f0f0ec;
+    --text2: #a0a09a;
+    --text3: #5c5c58;
+    --accent: #3dbe7e;
+    --accent-fg: #0d2e1e;
+    --accent-light: #0d2e1e;
+    --blue: #85B7EB;
+    --blue-light: #0c2240;
+    --amber: #e6a840;
+    --amber-light: #2a1e00;
+    --red: #f09090;
+    --red-light: #2a0808;
+    --green: #7ec85a;
+    --green-light: #162610;
+    --teal: #3dbe7e;
+    --teal-light: #0d2e1e;
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; overflow: hidden; }
+
+/* Layout */
+.app { display: flex; flex-direction: column; height: 100%; padding-top: var(--safe-top); }
+
+/* Header */
+.header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 16px 12px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.header-left h1 { font-size: 17px; font-weight: 700; color: var(--text); }
+.header-left p { font-size: 12px; color: var(--text3); margin-top: 1px; }
+.header-right { display: flex; gap: 8px; }
+.icon-btn { width: 36px; height: 36px; border: 1px solid var(--border2); border-radius: var(--r-sm); background: var(--surface2); color: var(--text2); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+
+/* Install banner */
+.install-banner { background: var(--accent-light); border-bottom: 1px solid var(--border); padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.install-banner p { font-size: 13px; color: var(--accent); font-weight: 500; }
+.install-banner button { padding: 6px 14px; background: var(--accent); color: var(--accent-fg); border: none; border-radius: var(--r-sm); font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.install-banner .dismiss { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 18px; padding: 0 4px; }
+
+/* Scroll area */
+.scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.content { padding: 16px 16px calc(16px + var(--safe-bot)); max-width: 640px; margin: 0 auto; }
+
+/* Bottom nav */
+.nav { background: var(--surface); border-top: 1px solid var(--border); display: flex; padding-bottom: var(--safe-bot); flex-shrink: 0; }
+.nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 10px 4px 8px; border: none; background: none; color: var(--text3); cursor: pointer; font-size: 10px; font-weight: 500; }
+.nav-btn.active { color: var(--accent); }
+.nav-icon { font-size: 22px; line-height: 1; }
+
+/* Section */
+.section { display: none; }
+.section.active { display: block; }
+
+/* Category label */
+.cat { font-size: 11px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text3); margin: 20px 0 10px; }
+.cat:first-child { margin-top: 0; }
+
+/* Exercise grid */
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
+.ex-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 12px; cursor: pointer; transition: border-color 0.15s; active: opacity 0.7; }
+.ex-card:active { opacity: 0.75; }
+.ex-card.sel { border-color: var(--accent); border-width: 2px; }
+.ex-name { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 1px; }
+.ex-sub { font-size: 10px; color: var(--text3); margin-bottom: 8px; line-height: 1.3; }
+.ex-val { font-size: 24px; font-weight: 700; color: var(--text); line-height: 1; }
+.ex-unit { font-size: 11px; font-weight: 400; color: var(--text2); }
+.badge { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px; margin-top: 5px; }
+.b-excellent { background: var(--green-light); color: var(--green); }
+.b-good { background: var(--blue-light); color: var(--blue); }
+.b-average { background: var(--amber-light); color: var(--amber); }
+.b-red { background: var(--red-light); color: var(--red); }
+.b-goal { background: var(--teal-light); color: var(--teal); }
+.b-progress { background: var(--amber-light); color: var(--amber); }
+.b-none { background: var(--surface2); color: var(--text3); }
+.prog { height: 3px; background: var(--border2); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+.prog-fill { height: 100%; border-radius: 2px; }
+
+/* Log panel */
+.log-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; margin-top: 12px; }
+.log-panel h2 { font-size: 15px; font-weight: 700; margin-bottom: 12px; }
+.goal-pill { display: inline-block; font-size: 12px; font-weight: 600; background: var(--teal-light); color: var(--teal); padding: 4px 10px; border-radius: 5px; margin-bottom: 12px; }
+.bm-list { margin-bottom: 14px; }
+.bm-row { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--border); }
+.bm-row:last-child { border-bottom: none; }
+
+.form-group { margin-bottom: 10px; }
+.form-label { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px; }
+.form-row { display: flex; gap: 8px; }
+.inp { padding: 11px 12px; font-size: 15px; border: 1px solid var(--border2); border-radius: var(--r-sm); background: var(--surface2); color: var(--text); outline: none; width: 100%; font-family: inherit; }
+.inp:focus { border-color: var(--accent); }
+.inp-num { width: 110px; flex-shrink: 0; }
+.inp-unit { display: flex; align-items: center; padding: 0 10px; font-size: 13px; color: var(--text3); background: var(--surface2); border: 1px solid var(--border2); border-left: none; border-radius: 0 var(--r-sm) var(--r-sm) 0; }
+.inp-num-wrap { display: flex; }
+.inp-num-wrap .inp { border-radius: var(--r-sm) 0 0 var(--r-sm); }
+textarea.inp { resize: none; font-size: 14px; }
+.btn-log { width: 100%; padding: 14px; font-size: 16px; font-weight: 700; background: var(--accent); color: var(--accent-fg); border: none; border-radius: var(--r-sm); cursor: pointer; margin-top: 4px; }
+.btn-log:active { opacity: 0.85; }
+
+/* Overview stats */
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 14px; }
+.stat-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); margin-bottom: 6px; }
+.stat-val { font-size: 26px; font-weight: 700; color: var(--text); line-height: 1; }
+.stat-unit { font-size: 12px; font-weight: 400; color: var(--text2); }
+.stat-meta { font-size: 11px; color: var(--text3); margin-top: 5px; }
+.divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+/* History */
+.hist-sel { width: 100%; padding: 11px 12px; font-size: 14px; border: 1px solid var(--border2); border-radius: var(--r-sm); background: var(--surface2); color: var(--text); outline: none; margin-bottom: 12px; }
+.chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 14px; margin-bottom: 12px; position: relative; height: 220px; }
+.tbl-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; color: var(--text3); font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+.del-btn { background: none; border: none; color: var(--text3); font-size: 16px; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+.del-btn:active { background: var(--red-light); color: var(--red); }
+
+/* Data panel */
+.data-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; margin-bottom: 12px; }
+.data-card h3 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+.data-card p { font-size: 13px; color: var(--text2); margin-bottom: 12px; line-height: 1.5; }
+.btn-sec { width: 100%; padding: 12px; font-size: 14px; font-weight: 600; background: var(--surface2); color: var(--text); border: 1px solid var(--border2); border-radius: var(--r-sm); cursor: pointer; margin-bottom: 8px; }
+.btn-sec:active { opacity: 0.75; }
+.btn-danger { color: var(--red); border-color: var(--red-light); }
+
+.empty { color: var(--text3); font-size: 13px; padding: 16px 0; text-align: center; }
+.toast { position: fixed; bottom: calc(80px + var(--safe-bot)); left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); font-size: 13px; font-weight: 500; padding: 10px 18px; border-radius: 20px; opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 99; white-space: nowrap; }
+.toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="header-left">
+      <h1>Phil's Fitness Tracker</h1>
+      <p>14 benchmarks · 219 lb goals</p>
+    </div>
+    <div class="header-right">
+      <button class="icon-btn" onclick="showSection('data')" title="Data & settings">⚙️</button>
+    </div>
+  </div>
+
+  <div class="install-banner" id="install-banner" style="display:none">
+    <p>Add to your home screen for app access</p>
+    <button onclick="installApp()">Install</button>
+    <button class="dismiss" onclick="dismissInstall()">×</button>
+  </div>
+
+  <div class="scroll">
+    <div class="content">
+
+      <!-- LOG -->
+      <div class="section active" id="sec-log">
+        <div class="cat">Fitness tests — KarlApexFit</div>
+        <div class="grid" id="grid-fitness"></div>
+        <div class="cat">Strength goals — at 219 lbs</div>
+        <div class="grid" id="grid-strength"></div>
+        <div class="log-panel" id="log-panel">
+          <h2 id="log-title">Select an exercise to log</h2>
+          <div id="log-form" style="display:none">
+            <div id="goal-pill" class="goal-pill" style="display:none"></div>
+            <div class="bm-list" id="bm-ref"></div>
+            <div class="form-group">
+              <div class="form-label">Score</div>
+              <div class="form-row">
+                <div class="inp-num-wrap">
+                  <input class="inp inp-num" type="number" id="val-in" placeholder="0" min="0" step="0.01" inputmode="decimal">
+                  <div class="inp-unit" id="unit-lbl">reps</div>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <div class="form-label">Date</div>
+              <input class="inp" type="date" id="date-in">
+            </div>
+            <div class="form-group">
+              <div class="form-label">Notes (optional)</div>
+              <textarea class="inp" id="note-in" rows="2" placeholder="Form, conditions, how you felt…"></textarea>
+            </div>
+            <button class="btn-log" onclick="logEntry()">Log session</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- OVERVIEW -->
+      <div class="section" id="sec-overview">
+        <div class="cat">Fitness tests</div>
+        <div class="stat-grid" id="ov-fitness"></div>
+        <div class="divider"></div>
+        <div class="cat" style="margin-top:0">Strength goals</div>
+        <div class="stat-grid" id="ov-strength"></div>
+      </div>
+
+      <!-- HISTORY -->
+      <div class="section" id="sec-history">
+        <select class="hist-sel" id="hist-sel" onchange="renderHistory()"></select>
+        <div class="chart-card">
+          <canvas id="hist-chart" role="img" aria-label="Progress chart">No data yet.</canvas>
+        </div>
+        <div id="hist-tbl"></div>
+      </div>
+
+      <!-- DATA -->
+      <div class="section" id="sec-data">
+        <div class="cat">Data management</div>
+        <div class="data-card">
+          <h3>Export data</h3>
+          <p>Download all your logged sessions as a JSON file. Use this to back up your data or transfer it to another device.</p>
+          <button class="btn-sec" onclick="exportData()">⬇ Export JSON backup</button>
+        </div>
+        <div class="data-card">
+          <h3>Import data</h3>
+          <p>Restore from a previously exported JSON backup. This will merge with your existing data.</p>
+          <button class="btn-sec" onclick="document.getElementById('import-file').click()">⬆ Import JSON backup</button>
+          <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+        </div>
+        <div class="data-card">
+          <h3>About</h3>
+          <p>Phil's Fitness Tracker v1.0<br>14 benchmarks: 7 KarlApexFit fitness tests + 7 strength goals at 219 lbs bodyweight.<br><br>Data is stored locally on this device. Export regularly to back up.</p>
+        </div>
+        <div class="data-card">
+          <h3>Reset all data</h3>
+          <p>Permanently delete all logged sessions. This cannot be undone.</p>
+          <button class="btn-sec btn-danger" onclick="resetData()">🗑 Delete all data</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <nav class="nav">
+    <button class="nav-btn active" id="nav-log" onclick="showSection('log')">
+      <span class="nav-icon">✏️</span>Log
+    </button>
+    <button class="nav-btn" id="nav-overview" onclick="showSection('overview')">
+      <span class="nav-icon">📊</span>Overview
+    </button>
+    <button class="nav-btn" id="nav-history" onclick="showSection('history')">
+      <span class="nav-icon">📈</span>History
+    </button>
+    <button class="nav-btn" id="nav-data" onclick="showSection('data')">
+      <span class="nav-icon">⚙️</span>Settings
+    </button>
+  </nav>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const BW = 219;
+
+const FITNESS = [
+  {id:'pushup', name:'Push-ups', unit:'reps', lower:false,
+   sub:'Full ROM, no half reps',
+   tiers:[{l:'Excellent',min:30,c:'#2d6e1a'},{l:'Good',min:20,c:'#185FA5'},{l:'Average',min:10,c:'#8a5200'},{l:'Red flag',min:0,c:'#992020'}]},
+  {id:'mile', name:'1-mile run', unit:'min', lower:true,
+   sub:'Under 10 min baseline',
+   tiers:[{l:'Excellent',min:0,max:8,c:'#2d6e1a'},{l:'Good',min:8,max:10,c:'#185FA5'},{l:'Average',min:10,max:12,c:'#8a5200'},{l:'Red flag',min:12,max:999,c:'#992020'}]},
+  {id:'hang', name:'Dead hang', unit:'sec', lower:false,
+   sub:'Grip strength predictor',
+   tiers:[{l:'Excellent',min:60,c:'#2d6e1a'},{l:'Good',min:40,c:'#185FA5'},{l:'Average',min:20,c:'#8a5200'},{l:'Needs work',min:0,c:'#992020'}]},
+  {id:'plank', name:'Plank hold', unit:'sec', lower:false,
+   sub:'Head-to-heel straight line',
+   tiers:[{l:'Excellent',min:90,c:'#2d6e1a'},{l:'Good',min:60,c:'#185FA5'},{l:'Average',min:30,c:'#8a5200'},{l:'Compromised',min:0,c:'#992020'}]},
+  {id:'waist', name:'Waist/height', unit:'ratio', lower:true,
+   sub:'Navel ÷ height (inches)',
+   tiers:[{l:'Athlete',min:0,max:0.43,c:'#0f6e56'},{l:'Excellent',min:0.43,max:0.47,c:'#2d6e1a'},{l:'Acceptable',min:0.47,max:0.53,c:'#8a5200'},{l:'Elevated risk',min:0.53,max:9,c:'#992020'}]},
+  {id:'pullup_f', name:'Pull-ups', unit:'reps', lower:false,
+   sub:'Dead hang, chin over bar',
+   tiers:[{l:'Excellent',min:10,c:'#2d6e1a'},{l:'Good',min:6,c:'#185FA5'},{l:'Average',min:1,c:'#8a5200'},{l:'Urgent',min:0,c:'#992020'}]},
+  {id:'squat_f', name:'BW squat test', unit:'reps', lower:false,
+   sub:'Full depth, max reps',
+   tiers:[{l:'Excellent',min:40,c:'#2d6e1a'},{l:'Good',min:25,c:'#185FA5'},{l:'Average',min:15,c:'#8a5200'},{l:'Needs work',min:0,c:'#992020'}]},
+];
+
+const STRENGTH = [
+  {id:'bench',    name:'Bench press',    unit:'lbs',     lower:false, goal:Math.round(BW*1.25), sub:`Target ${Math.round(BW*1.25)} lbs`, goalLabel:`1.25× BW = ${Math.round(BW*1.25)} lbs`},
+  {id:'squat1',   name:'Back squat',     unit:'lbs',     lower:false, goal:Math.round(BW*1.5),  sub:`Target ${Math.round(BW*1.5)} lbs`,  goalLabel:`1.5× BW = ${Math.round(BW*1.5)} lbs`},
+  {id:'deadlift', name:'Deadlift',       unit:'lbs',     lower:false, goal:Math.round(BW*2),    sub:`Target ${Math.round(BW*2)} lbs`,    goalLabel:`2× BW = ${Math.round(BW*2)} lbs`},
+  {id:'pullup15', name:'Pull-ups',       unit:'reps',    lower:false, goal:15,                  sub:'Target 15 reps',                    goalLabel:'Goal: 15 reps'},
+  {id:'ohp',      name:'Overhead press', unit:'lbs',     lower:false, goal:Math.round(BW*0.75), sub:`Target ${Math.round(BW*0.75)} lbs`, goalLabel:`0.75× BW = ${Math.round(BW*0.75)} lbs`},
+  {id:'dips',     name:'Dips',           unit:'reps',    lower:false, goal:20,                  sub:'Target 20 reps',                    goalLabel:'Goal: 20 reps'},
+  {id:'farmer',   name:'Farmer carry',   unit:'lbs/hand',lower:false, goal:Math.round(BW*0.5),  sub:`Target ${Math.round(BW*0.5)} lbs/hand`, goalLabel:`0.5× BW = ${Math.round(BW*0.5)} lbs/hand`},
+];
+
+const ALL = [...FITNESS, ...STRENGTH];
+
+function getTier(ex, val) {
+  if (val === null || val === undefined) return null;
+  if (ex.lower) {
+    for (let t of ex.tiers) { if (val >= (t.min ?? 0) && val < (t.max ?? 999)) return t; }
+    return ex.tiers[ex.tiers.length - 1];
+  }
+  const s = [...ex.tiers].sort((a,b) => b.min - a.min);
+  for (let t of s) { if (val >= t.min) return t; }
+  return ex.tiers[ex.tiers.length - 1];
+}
+
+function bCls(label, isStr) {
+  if (!label) return 'b-none';
+  if (isStr) return label === 'Goal hit' ? 'b-goal' : 'b-progress';
+  const l = label.toLowerCase();
+  if (l.includes('excell') || l.includes('athlete')) return 'b-excellent';
+  if (l.includes('good')) return 'b-good';
+  if (l.includes('average') || l.includes('accept')) return 'b-average';
+  return 'b-red';
+}
+
+let db = {};
+try { db = JSON.parse(localStorage.getItem('philfit_pwa') || '{}'); } catch(e) { db = {}; }
+function save() { try { localStorage.setItem('philfit_pwa', JSON.stringify(db)); } catch(e) {} }
+
+let selected = null;
+let hChart = null;
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (!localStorage.getItem('install_dismissed')) {
+    document.getElementById('install-banner').style.display = 'flex';
+  }
+});
+
+function installApp() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(() => {
+      deferredPrompt = null;
+      document.getElementById('install-banner').style.display = 'none';
+    });
+  } else {
+    toast('On iOS: tap Share → Add to Home Screen');
+  }
+}
+
+function dismissInstall() {
+  localStorage.setItem('install_dismissed', '1');
+  document.getElementById('install-banner').style.display = 'none';
+}
+
+function getEntries(id) { return (db[id] || []).sort((a,b) => a.date.localeCompare(b.date)); }
+function getBest(ex) {
+  const e = getEntries(ex.id);
+  if (!e.length) return null;
+  return ex.lower ? Math.min(...e.map(x => x.val)) : Math.max(...e.map(x => x.val));
+}
+function fmt(ex, val) {
+  if (val === null || val === undefined) return '—';
+  if (ex.unit === 'ratio') return val.toFixed(2);
+  if (ex.unit === 'min') return val.toFixed(1);
+  return Math.round(val).toString();
+}
+
+function cardHTML(ex, isStr) {
+  const best = getBest(ex);
+  const tier = isStr
+    ? (best !== null ? {l: best >= ex.goal ? 'Goal hit' : 'In progress'} : null)
+    : getTier(ex, best);
+  const sel = selected && selected.id === ex.id;
+  const pct = isStr && ex.goal && best !== null ? Math.min(100, Math.round((best / ex.goal) * 100)) : null;
+  const fc = pct !== null ? (pct >= 100 ? '#1a6b4a' : '#185FA5') : '#185FA5';
+  return `<div class="ex-card${sel ? ' sel' : ''}" onclick="selectEx('${ex.id}')">
+    <div class="ex-name">${ex.name}</div>
+    <div class="ex-sub">${ex.sub || ex.unit}</div>
+    <div><span class="ex-val">${fmt(ex, best)}</span><span class="ex-unit"> ${best !== null ? ex.unit : ''}</span></div>
+    ${tier ? `<span class="badge ${bCls(tier.l, isStr)}">${tier.l}</span>` : '<span class="badge b-none">No data</span>'}
+    ${pct !== null ? `<div class="prog"><div class="prog-fill" style="width:${pct}%;background:${fc}"></div></div>` : ''}
+  </div>`;
+}
+
+function renderGrids() {
+  document.getElementById('grid-fitness').innerHTML = FITNESS.map(e => cardHTML(e, false)).join('');
+  document.getElementById('grid-strength').innerHTML = STRENGTH.map(e => cardHTML(e, true)).join('');
+}
+
+function selectEx(id) {
+  selected = ALL.find(e => e.id === id);
+  renderGrids();
+  document.getElementById('log-title').textContent = selected.name;
+  document.getElementById('log-form').style.display = 'block';
+  document.getElementById('unit-lbl').textContent = selected.unit;
+  document.getElementById('date-in').value = new Date().toISOString().split('T')[0];
+  document.getElementById('val-in').value = '';
+  document.getElementById('note-in').value = '';
+
+  const gp = document.getElementById('goal-pill');
+  if (selected.goalLabel) { gp.style.display = 'inline-block'; gp.textContent = '🎯 ' + selected.goalLabel; }
+  else gp.style.display = 'none';
+
+  const isStr = STRENGTH.some(e => e.id === selected.id);
+  const bmRef = document.getElementById('bm-ref');
+  if (!isStr && selected.tiers) {
+    bmRef.innerHTML = selected.tiers.map(t => {
+      const range = selected.lower
+        ? `${t.min}–${(t.max === 999 || t.max === 9) ? '∞' : t.max} ${selected.unit}`
+        : `${t.min}+ ${selected.unit}`;
+      return `<div class="bm-row"><span style="font-weight:600;color:${t.c}">${t.l}</span><span style="color:var(--text3);font-size:11px">${range}</span></div>`;
+    }).join('');
+  } else bmRef.innerHTML = '';
+
+  document.getElementById('log-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function logEntry() {
+  if (!selected) return;
+  const val = parseFloat(document.getElementById('val-in').value);
+  const date = document.getElementById('date-in').value;
+  const note = document.getElementById('note-in').value.trim();
+  if (isNaN(val) || !date) { toast('Enter a score and date'); return; }
+  if (!db[selected.id]) db[selected.id] = [];
+  db[selected.id].push({ val, date, note, ts: Date.now() });
+  save();
+  renderGrids();
+  renderOverview();
+  document.getElementById('val-in').value = '';
+  document.getElementById('note-in').value = '';
+  toast('Session logged ✓');
+}
+
+function renderOverview() {
+  ['fitness','strength'].forEach(cat => {
+    const list = cat === 'fitness' ? FITNESS : STRENGTH;
+    const isStr = cat === 'strength';
+    document.getElementById('ov-' + cat).innerHTML = list.map(ex => {
+      const best = getBest(ex);
+      const tier = isStr
+        ? (best !== null ? {l: best >= ex.goal ? 'Goal hit' : 'In progress'} : null)
+        : getTier(ex, best);
+      const count = (db[ex.id] || []).length;
+      const pct = isStr && ex.goal && best !== null ? Math.min(100, Math.round((best / ex.goal) * 100)) : null;
+      const fc = pct !== null ? (pct >= 100 ? '#1a6b4a' : '#185FA5') : '#185FA5';
+      return `<div class="stat-card">
+        <div class="stat-lbl">${ex.name}</div>
+        <div><span class="stat-val">${fmt(ex, best)}</span><span class="stat-unit"> ${best !== null ? ex.unit : ''}</span></div>
+        <div style="margin-top:5px">${tier ? `<span class="badge ${bCls(tier.l, isStr)}">${tier.l}</span>` : '<span class="badge b-none">No data</span>'}</div>
+        ${pct !== null ? `<div class="prog" style="margin-top:8px"><div class="prog-fill" style="width:${pct}%;background:${fc}"></div></div><div style="font-size:10px;color:var(--text3);margin-top:3px">${pct}% of goal</div>` : ''}
+        <div class="stat-meta">${count} session${count !== 1 ? 's' : ''}</div>
+      </div>`;
+    }).join('');
+  });
+}
+
+function renderHistory() {
+  const id = document.getElementById('hist-sel').value;
+  const ex = ALL.find(e => e.id === id);
+  const entries = getEntries(id);
+  const isStr = STRENGTH.some(e => e.id === id);
+
+  if (hChart) { hChart.destroy(); hChart = null; }
+  const canvas = document.getElementById('hist-chart');
+
+  if (entries.length >= 1) {
+    const datasets = [{
+      label: ex.name,
+      data: entries.map(e => e.val),
+      borderColor: '#185FA5',
+      backgroundColor: 'rgba(24,95,165,0.07)',
+      pointBackgroundColor: '#185FA5',
+      tension: 0.3, fill: true, pointRadius: 4, pointHoverRadius: 6
+    }];
+    if (ex.goal) {
+      datasets.push({ label: 'Target', data: entries.map(() => ex.goal), borderColor: '#1a6b4a', borderDash: [5,4], pointRadius: 0, borderWidth: 1.5, fill: false });
+    }
+    hChart = new Chart(canvas, {
+      type: 'line',
+      data: { labels: entries.map(e => e.date), datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: !!ex.goal, labels: { font: { size: 11 }, boxWidth: 10, padding: 12 } } },
+        scales: {
+          x: { ticks: { font: { size: 10 }, maxRotation: 40 }, grid: { color: 'rgba(128,128,128,0.07)' } },
+          y: { ticks: { font: { size: 10 } }, grid: { color: 'rgba(128,128,128,0.07)' } }
+        }
+      }
+    });
+  }
+
+  const tbl = document.getElementById('hist-tbl');
+  if (!entries.length) { tbl.innerHTML = '<p class="empty">No sessions logged yet.</p>'; return; }
+  tbl.innerHTML = `<div class="tbl-card"><table>
+    <thead><tr><th>Date</th><th>Score</th><th>Rating</th><th></th></tr></thead>
+    <tbody>${[...entries].reverse().map(e => {
+      const tier = isStr ? {l: e.val >= ex.goal ? 'Goal hit' : 'In progress'} : getTier(ex, e.val);
+      const ri = db[id].findIndex(x => x.ts === e.ts);
+      return `<tr>
+        <td style="font-size:12px">${e.date}${e.note ? `<div style="color:var(--text3);font-size:11px;margin-top:2px">${e.note}</div>` : ''}</td>
+        <td style="font-weight:700">${fmt(ex, e.val)} <span style="font-weight:400;font-size:11px;color:var(--text3)">${ex.unit}</span></td>
+        <td>${tier ? `<span class="badge ${bCls(tier.l, isStr)}">${tier.l}</span>` : ''}</td>
+        <td><button class="del-btn" onclick="delEntry('${id}',${ri})">🗑</button></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+}
+
+function delEntry(id, idx) {
+  if (!db[id] || idx < 0) return;
+  if (!confirm('Delete this session?')) return;
+  db[id].splice(idx, 1);
+  save();
+  renderGrids();
+  renderOverview();
+  renderHistory();
+}
+
+function exportData() {
+  const json = JSON.stringify({ version: 1, exported: new Date().toISOString(), data: db }, null, 2);
+  const a = document.createElement('a');
+  a.href = 'data:application/json,' + encodeURIComponent(json);
+  a.download = 'phil_fitness_' + new Date().toISOString().split('T')[0] + '.json';
+  a.click();
+  toast('Data exported ✓');
+}
+
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const parsed = JSON.parse(ev.target.result);
+      const incoming = parsed.data || parsed;
+      let count = 0;
+      Object.keys(incoming).forEach(id => {
+        if (!db[id]) db[id] = [];
+        const existing = new Set(db[id].map(x => x.ts));
+        (incoming[id] || []).forEach(entry => {
+          if (!existing.has(entry.ts)) { db[id].push(entry); count++; }
+        });
+      });
+      save();
+      renderGrids();
+      renderOverview();
+      toast(`Imported ${count} new session${count !== 1 ? 's' : ''} ✓`);
+    } catch(err) { toast('Import failed — invalid file'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+function resetData() {
+  if (!confirm('Delete ALL data permanently? This cannot be undone.')) return;
+  db = {};
+  save();
+  renderGrids();
+  renderOverview();
+  toast('All data deleted');
+}
+
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+let currentSection = 'log';
+function showSection(name) {
+  currentSection = name;
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('sec-' + name).classList.add('active');
+  const nb = document.getElementById('nav-' + name);
+  if (nb) nb.classList.add('active');
+  if (name === 'overview') renderOverview();
+  if (name === 'history') {
+    document.getElementById('hist-sel').innerHTML = ALL.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+    renderHistory();
+  }
+}
+
+// Service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
+renderGrids();
+renderOverview();
+</script>
+</body>
+</html>
